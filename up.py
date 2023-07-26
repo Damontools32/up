@@ -1,32 +1,59 @@
-import telethon
+import asyncio
+import requests
+from telethon.sync import TelegramClient
+from telethon.sessions import StringSession
 
-# Get the API ID, API hash, and bot token from your Telegram bot settings
-API_ID = 1234567890
-API_HASH = "abcdeghijklmnopqrstuvwxyz1234567890"
-BOT_TOKEN = "1234567890:abcdeghijklmnopqrstuvwxyz1234567890"
+# اطلاعات مربوط به ربات تلگرام
+API_ID = 'YOUR_API_ID'
+API_HASH = 'YOUR_API_HASH'
+BOT_TOKEN = 'YOUR_BOT_TOKEN'
 
-# Create a Telethon client
-client = telethon.TelegramClient("bot", API_ID, API_HASH)
+# تعیین تعداد همزمان برای دانلود فایل‌ها
+CONCURRENT_DOWNLOADS = 1
 
-# Connect the client to Telegram
-client.connect()
+async def download_and_upload(client, link):
+    # دانلود فایل از لینک
+    file_name = link.split('/')[-1]
+    with requests.get(link, stream=True) as response:
+        with open(file_name, 'wb') as out_file:
+            for chunk in response.iter_content(chunk_size=8192):
+                out_file.write(chunk)
 
-# Get the list of messages sent to the bot
-messages = await client.get_messages()
+    # آپلود فایل به تلگرام
+    await client.send_file('me', file_name)
 
-# Loop over the messages
-for message in messages:
-    # If the message is a link
-    if message.text.startswith("https://") or message.text.startswith("http://"):
-        # Download the file
-        file = await client.download_file(message.text)
+    # حذف فایل از سرور محلی
+    import os
+    os.remove(file_name)
 
-        # Upload the file to Telegram
-        await client.send_file(
-            chat_id=message.chat_id,
-            file=file,
-            caption="This is the file you sent.",
-        )
+async def main():
+    # اتصال به تلگرام با کلاینت
+    client = TelegramClient(StringSession(), API_ID, API_HASH)
+    await client.start(bot_token=BOT_TOKEN)
 
-# Disconnect the client from Telegram
-client.disconnect()
+    # لیست لینک‌های دانلودی
+    download_links = [
+        'https://example.com/file1.txt',
+        'https://example.com/file2.txt',
+        'https://example.com/file3.txt'
+        # و غیره
+    ]
+
+    # اجرای همزمان فرآیند دانلود و آپلود
+    tasks = []
+    for link in download_links:
+        task = download_and_upload(client, link)
+        tasks.append(task)
+        if len(tasks) >= CONCURRENT_DOWNLOADS:
+            await asyncio.gather(*tasks)
+            tasks = []
+
+    # مطمئن شوید که تمام وظایف اجرا شوند
+    if tasks:
+        await asyncio.gather(*tasks)
+
+    # قطع ارتباط با تلگرام
+    await client.disconnect()
+
+if __name__ == '__main__':
+    asyncio.run(main())
