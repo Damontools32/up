@@ -1,48 +1,36 @@
-import asyncio
-from telethon.sync import TelegramClient
-from telethon.sessions import StringSession
-from pyrogram import Client
-import aiohttp
+import telethon
+import pyrogram
 
-# اطلاعات API تلگرام
-api_id_telethon = YOUR_TELETHON_API_ID
-api_hash_telethon = 'YOUR_TELETHON_API_HASH'
-bot_token_telegram = 'YOUR_BOT_TOKEN'
+# Get the API ID, API hash, and bot token from your Telegram bot settings
+API_ID = 1234567890
+API_HASH = "abcdeghijklmnopqrstuvwxyz1234567890"
+BOT_TOKEN = "1234567890:abcdeghijklmnopqrstuvwxyz1234567890"
 
-# تابع برای دانلود و آپلود فایل با Pyrogram
-async def upload_file_to_telegram(file_path, chat_id):
-    async with Client("my_account", bot_token=bot_token_telegram) as app:
-        try:
-            message = await app.send_document(chat_id, file_path)
-            print(f"فایل با موفقیت آپلود شد: {file_path}")
-        except Exception as e:
-            print(f"خطا در آپلود فایل {file_path}: {e}")
+# Create a Telethon client
+client = telethon.TelegramClient("bot", API_ID, API_HASH)
 
-# تابع برای دانلود لینک با استفاده از Telethon
-async def download_link(link):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(link) as response:
-            if response.status == 200:
-                filename = link.split("/")[-1]
-                with open(filename, "wb") as f:
-                    f.write(await response.read())
-                return filename
-            else:
-                return None
+# Connect the client to Telegram
+client.connect()
 
-# تابع اصلی برای دانلود و آپلود لینک‌ها به ترتیب اولویت زمانی
-async def main():
-    # لیست لینک‌های دانلود
-    download_links = ['link1', 'link2', 'link3']
+# Get the list of messages sent to the bot
+messages = client.get_messages()
 
-    # chat_id خودتان یا chat_id کاربر/گروه/کانال دیگری که می‌خواهید آپلود شود
-    chat_id = "your_chat_id"
+# Loop over the messages
+for message in messages:
+    # If the message is a link
+    if message.text.startswith("https://") or message.text.startswith("http://"):
+        # Download the file
+        file = client.download_file(message.text)
 
-    async with TelegramClient(StringSession(), api_id_telethon, api_hash_telethon) as client:
-        for link in download_links:
-            filename = await download_link(link)
-            if filename:
-                await upload_file_to_telegram(filename, chat_id)
+        # Upload the file to Telegram
+        pyrogram.send_file(
+            chat_id=message.chat_id,
+            file=file,
+            caption="This is the file you sent.",
+        )
 
-if __name__ == "__main__":
-    asyncio.run(main())
+        # Delete the file from the server
+        client.delete_file(file)
+
+# Disconnect the client from Telegram
+client.disconnect()
