@@ -1,54 +1,48 @@
 import asyncio
-import os
+from telethon.sync import TelegramClient
+from telethon.sessions import StringSession
 from pyrogram import Client
+import aiohttp
 
 # اطلاعات API تلگرام
-api_id = YOUR_API_ID
-api_hash = 'YOUR_API_HASH'
-bot_token = 'YOUR_BOT_TOKEN'
+api_id_telethon = YOUR_TELETHON_API_ID
+api_hash_telethon = 'YOUR_TELETHON_API_HASH'
+bot_token_telegram = 'YOUR_BOT_TOKEN'
 
-# اطلاعات API پیروگرام
-api_id_pyrogram = YOUR_PYROGRAM_API_ID
-api_hash_pyrogram = 'YOUR_PYROGRAM_API_HASH'
+# تابع برای دانلود و آپلود فایل با Pyrogram
+async def upload_file_to_telegram(file_path, chat_id):
+    async with Client("my_account", bot_token=bot_token_telegram) as app:
+        try:
+            message = await app.send_document(chat_id, file_path)
+            print(f"فایل با موفقیت آپلود شد: {file_path}")
+        except Exception as e:
+            print(f"خطا در آپلود فایل {file_path}: {e}")
 
-# تعریف صف برای فایل‌ها
-file_queue = asyncio.Queue()
+# تابع برای دانلود لینک با استفاده از Telethon
+async def download_link(link):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(link) as response:
+            if response.status == 200:
+                filename = link.split("/")[-1]
+                with open(filename, "wb") as f:
+                    f.write(await response.read())
+                return filename
+            else:
+                return None
 
-# تابع برای آپلود فایل با Pyrogram
-async def upload_file(client, chat_id, file_path):
-    try:
-        message = await client.send_document(chat_id, file_path)
-        print(f"فایل با موفقیت آپلود شد: {file_path}")
-        os.remove(file_path)  # پاک‌کردن فایل از سرور پس از آپلود
-        file_queue.task_done()
-        return message
-    except Exception as e:
-        print(f"خطا در آپلود فایل {file_path}: {e}")
-        file_queue.task_done()
-
-# تابع برای پردازش صف و آپلود فایل‌ها با Pyrogram
-async def process_file_queue(client, chat_id):
-    async for file_path in file_queue:
-        await upload_file(client, chat_id, file_path)
-
+# تابع اصلی برای دانلود و آپلود لینک‌ها به ترتیب اولویت زمانی
 async def main():
-    # اجرای Pyrogram
-    async with Client("my_account", api_id_pyrogram, api_hash_pyrogram, bot_token=bot_token) as pyrogram_client:
-        # استفاده از pyrogram و اضافه کردن فایل‌ها به صف
-        # links = ['لینک ۱', 'لینک ۲', ...]
-        links = ['link1.txt', 'link2.txt', 'link3.txt']  # یک لیست از لینک‌ها یا نام فایل‌ها
-        chat_id = "me"  # chat_id خودتان یا chat_id کاربر/گروه/کانال دیگری که می‌خواهید آپلود شود
+    # لیست لینک‌های دانلود
+    download_links = ['link1', 'link2', 'link3']
 
-        for link in links:
-            # اینجا می‌توانید بر اساس لینک فایل‌ها را دانلود کرده و در صف قرار دهید
-            await file_queue.put(link)
+    # chat_id خودتان یا chat_id کاربر/گروه/کانال دیگری که می‌خواهید آپلود شود
+    chat_id = "your_chat_id"
 
-        # تعریف ۵ تا ورکر برای همزمانی (concurrent) در آپلود فایل‌ها
-        num_workers = 5
-        tasks = [process_file_queue(pyrogram_client, chat_id) for _ in range(num_workers)]
-
-        # شروع همه ورکر‌ها
-        await asyncio.gather(*tasks)
+    async with TelegramClient(StringSession(), api_id_telethon, api_hash_telethon) as client:
+        for link in download_links:
+            filename = await download_link(link)
+            if filename:
+                await upload_file_to_telegram(filename, chat_id)
 
 if __name__ == "__main__":
     asyncio.run(main())
