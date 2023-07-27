@@ -1,66 +1,38 @@
-# Import the telethon and logging libraries
+# نصب کتابخانه‌های مورد نیاز
+pip install telethon
+pip install spotdl
+
+# وارد کردن اطلاعات ربات
+api_id = 123456 # شماره شناسایی api
+api_hash = "abcdef1234567890" # رشته شناسایی api
+bot_token = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" # توکن ربات
+
+# ایجاد یک نمونه از کلاس TelegramClient
 from telethon import TelegramClient, events
-import logging
-
-# Create a logger object with the name "bot"
-logger = logging.getLogger("bot")
-
-# Set the logging level to DEBUG
-logger.setLevel(logging.DEBUG)
-
-# Create a handler object to send logging messages to stdout
-handler = logging.StreamHandler()
-
-# Add the handler to the logger
-logger.addHandler(handler)
-
-# Define the api id, api hash and bot token of your bot
-api_id = "YOUR_API_ID"
-api_hash = "YOUR_API_HASH"
-bot_token = "YOUR_BOT_TOKEN"
-
-# Create a TelegramClient object with your bot credentials
 bot = TelegramClient("bot", api_id, api_hash).start(bot_token=bot_token)
 
-# Define a function to download instagram posts, reels and stories from a link
-def download_instagram(link):
-    # You can use an online service or write your own script here
-    # For example, using https://saveinsta.app/
-    import requests
-    from bs4 import BeautifulSoup
-    # Send a request to the service with the link as a parameter
-    download_link = requests.get("https://saveinsta.app/download", params={"url": link}).text
-    # Download the file from the link and save it locally
-    file_name = link.split("/")[-2] + ".mp4" # You can change the file name and extension as you wish
-    file_content = requests.get(download_link).content
-    with open(file_name, "wb") as f:
-        f.write(file_content)
-    # Return the file name
-    return file_name
-
-# Register an event handler for messages that start with /download
-@bot.on(events.NewMessage(pattern="/download"))
-async def download_handler(event):
-    # Get the message text and sender id
-    message = event.message.text
-    sender_id = event.message.sender_id
-    # Split the message by space and get the second part as the link
-    link = message.split()[1]
-    # Log the received link as an info message
-    logger.info(f"Received link: {link}")
-    # Call the download_instagram function with the link and get the file name
-    file_name = download_instagram(link)
-    # Log the downloaded file name as an info message
-    logger.info(f"Downloaded file: {file_name}")
-    # Send the file to the sender as a document
-    await bot.send_file(sender_id, file_name, caption="Here is your file")
-    # Log the sent file as an info message
-    logger.info(f"Sent file: {file_name}")
-    # Delete the file from the local storage
+# تعریف یک تابع برای دانلود و آپلود فایل اسپاتیفای
+def download_and_upload(spotify_link, event):
+    # استفاده از spotdl برای دانلود فایل mp3 از لینک اسپاتیفای
+    import spotdl
+    spotdl.download_track(spotify_link)
+    # پیدا کردن نام فایل دانلود شده
     import os
+    file_name = os.listdir()[0]
+    # آپلود فایل به تلگرام با استفاده از telethon
+    bot.send_file(event.chat_id, file_name)
+    # حذف فایل از سرور
     os.remove(file_name)
-    # Log the deleted file as an info message
-    logger.info(f"Deleted file: {file_name}")
 
-# Start the bot and run it until it is stopped
+# تعریف یک رویداد برای دریافت پیام‌های حاوی لینک اسپاتیفای
+@bot.on(events.NewMessage(pattern="https://open.spotify.com/.*"))
+async def spotify_handler(event):
+    # گرفتن لینک اسپاتیفای از پیام
+    spotify_link = event.text
+    # فرستادن یک پاسخ به کاربر برای نشان دادن وضعیت دانلود
+    await event.reply("در حال دانلود فایل ...")
+    # صدا زدن تابع دانلود و آپلود با لینک و رویداد به عنوان ورودی‌ها
+    download_and_upload(spotify_link, event)
+
+# شروع حلقه رویداد‌ها برای گوش دادن به پیام‌ها
 bot.run_until_disconnected()
