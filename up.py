@@ -2,7 +2,7 @@ import os
 import requests
 from collections import deque
 from telethon import TelegramClient, events
-from pyrogram import Client
+from pyrogram import Client, filters
 
 # setup your credentials
 api_id = 'your_api_id'
@@ -34,8 +34,9 @@ async def download_file():
 # uploading the file
 app = Client("my_account", api_id, api_hash, bot_token = bot_token)
 
-@app.on(events.NewMessage)
-async def upload_file(filename):
+@app.on_message()
+async def upload_file(client, message):
+    filename = message.text
     await app.send_document("me", document=filename)
 
 # start download and upload task
