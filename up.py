@@ -1,5 +1,18 @@
-# Import the telethon library
+# Import the telethon and logging libraries
 from telethon import TelegramClient, events
+import logging
+
+# Create a logger object with the name "bot"
+logger = logging.getLogger("bot")
+
+# Set the logging level to DEBUG
+logger.setLevel(logging.DEBUG)
+
+# Create a handler object to send logging messages to stdout
+handler = logging.StreamHandler()
+
+# Add the handler to the logger
+logger.addHandler(handler)
 
 # Define the api id, api hash and bot token of your bot
 api_id = "YOUR_API_ID"
@@ -39,13 +52,21 @@ async def download_handler(event):
     sender_id = event.message.sender_id
     # Split the message by space and get the second part as the link
     link = message.split()[1]
+    # Log the received link as an info message
+    logger.info(f"Received link: {link}")
     # Call the download_instagram function with the link and get the file name
     file_name = download_instagram(link)
+    # Log the downloaded file name as an info message
+    logger.info(f"Downloaded file: {file_name}")
     # Send the file to the sender as a document
     await bot.send_file(sender_id, file_name, caption="Here is your file")
+    # Log the sent file as an info message
+    logger.info(f"Sent file: {file_name}")
     # Delete the file from the local storage
     import os
     os.remove(file_name)
+    # Log the deleted file as an info message
+    logger.info(f"Deleted file: {file_name}")
 
 # Start the bot and run it until it is stopped
 bot.run_until_disconnected()
