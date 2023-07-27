@@ -1,4 +1,3 @@
-
 # وارد کردن اطلاعات ربات
 api_id = 123456 # شماره شناسایی api
 api_hash = "abcdef1234567890" # رشته شناسایی api
@@ -21,4 +20,19 @@ def download_and_upload(spotify_link, event):
     import os
     file_name = os.listdir()[0]
     # آپلود فایل به تلگرام با استفاده از telethon
-    bo
+    bot.send_file(event.chat_id, file_name, caption="Here is your song")
+    # حذف فایل از سیستم
+    os.remove(file_name)
+
+# تعریف یک رویداد برای دریافت لینک اسپاتیفای از کاربر
+@bot.on(events.NewMessage(pattern=r"https://open.spotify.com/track/.*"))
+async def spotify_handler(event):
+    # گرفتن لینک اسپاتیفای از پیام کاربر
+    spotify_link = event.text
+    # نمایش یک پیام در حال پردازش به کاربر
+    await event.reply("Processing your request...")
+    # فراخوانی تابع دانلود و آپلود با لینک و رویداد به عنوان ورودی‌ها
+    download_and_upload(spotify_link, event)
+
+# شروع ربات و حفظ آن در حالت فعال
+bot.run_until_disconnected()
