@@ -25,17 +25,11 @@ bot = TelegramClient("bot", api_id, api_hash).start(bot_token=bot_token)
 # Define a function to download instagram posts, reels and stories from a link
 def download_instagram(link):
     # You can use an online service or write your own script here
-    # For example, using https://instaoffline.net/
+    # For example, using https://saveinsta.app/
     import requests
     from bs4 import BeautifulSoup
     # Send a request to the service with the link as a parameter
-    response = requests.get("https://instaoffline.net/download", params={"url": link})
-    # Parse the response content with BeautifulSoup
-    soup = BeautifulSoup(response.content, "html.parser")
-    # Find the download button element in the HTML
-    download_button = soup.find("a", class_="btn btn-primary")
-    # Get the download link from the href attribute of the button
-    download_link = download_button["href"]
+    download_link = requests.get("https://saveinsta.app/download", params={"url": link}).text
     # Download the file from the link and save it locally
     file_name = link.split("/")[-2] + ".mp4" # You can change the file name and extension as you wish
     file_content = requests.get(download_link).content
