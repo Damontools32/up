@@ -1,49 +1,35 @@
 import os
-import requests
-from collections import deque
-from telethon import TelegramClient, events
+from yt_dlp import YoutubeDL
 from pyrogram import Client, filters
+from dotenv import load_dotenv
 
-# setup your credentials
-api_id = 'your_api_id'
-api_hash = 'your_api_hash'
-bot_token = 'your_bot_token'
+load_dotenv()
 
-# setup telegram client
-client = TelegramClient('bot', api_id, api_hash)
+API_ID = os.environ.get("API_ID")     # Get it from my.telegram.org
+API_HASH = os.environ.get("API_HASH") # Get it from my.telegram.org
+BOT_TOKEN = os.environ.get("BOT_TOKEN") # Get it from @BotFather
 
-queue = deque()  # initialize a queue
+app = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-@client.on(events.NewMessage)
-async def message_handler(event):
-    if event.message.message.startswith('http'):
-        queue.append(event.message.message)
+# This filter will capture all messages containing a link
+@app.on_message(filters.regex(r'\b(?:https?://)?(?:www\.)?instagram\.com/p/[-a-zA-Z0-9()@:%_\+.~#?&//=]*\b'))
+def handle_instagram_reels(client, message):
+    url = message.text
+    filename = download_from_instagram(url)
+    send_to_telegram(filename)
 
-# downloading the file
-async def download_file():
-    while len(queue) > 0:
-        url = queue.popleft()  # pop the first URL from the queue
-        r = requests.get(url, stream=True)
-        
-        filename = url.split("/")[-1]
-        with open(filename, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=1024): 
-                if chunk: 
-                    f.write(chunk)
-        return filename
+def download_from_instagram(url):
+    options = {
+        'format': 'best[ext=mp4]',  # choose the best quality format
+        'outtmpl': 'downloads/%(title)s.%(ext)s',  # name the file the URL_ID.mp4
+    }
+    with YoutubeDL(options) as ydl:
+        r = ydl.extract_info(url, download=True)
+        filename = ydl.prepare_filename(r)
+    return filename
 
-# uploading the file
-app = Client("my_account", api_id, api_hash, bot_token = bot_token)
+def send_to_telegram(filename):
+    app.send_video(chat_id, filename)
 
-@app.on_message()
-async def upload_file(client, message):
-    filename = await download_file()
-    await app.send_document("me", document=filename)
-
-# This main function calls the download_file() function
-async def main():
-    await download_file()
-
-client.start()
 app.run()
-client.run_until_disconnected()
+
