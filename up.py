@@ -30,18 +30,20 @@ async def download_file():
             for chunk in r.iter_content(chunk_size=1024): 
                 if chunk: 
                     f.write(chunk)
+        return filename
 
 # uploading the file
 app = Client("my_account", api_id, api_hash, bot_token = bot_token)
 
 @app.on_message()
 async def upload_file(client, message):
-    filename = message.text
+    filename = await download_file()
     await app.send_document("me", document=filename)
 
-# start download and upload task
-download_file()
-upload_file()
+# This main function calls the download_file() function
+async def main():
+    await download_file()
 
 client.start()
+app.run()
 client.run_until_disconnected()
